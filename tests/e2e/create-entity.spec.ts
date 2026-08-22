@@ -31,9 +31,9 @@ test.describe('Contacts > Create Entity', () => {
   });
 
   test('creates an entity via manual Entity Name entry, no Find Entity search', async ({ page }) => {
-    // scrollUntilCount's multi-pass retry (to absorb list-indexing lag) can approach the
-    // default 30s test timeout under load.
-    test.setTimeout(45_000);
+    // scrollUntilCount's multi-pass retry (to absorb CI's slower list-indexing lag) can
+    // take up to ~37s worst case on CI.
+    test.setTimeout(90_000);
 
     const contacts = new ContactsPage(page);
     const entityName = uniqueName('Manual-Entity');
@@ -84,9 +84,8 @@ test.describe('Contacts > Create Entity', () => {
   });
 
   test('creating an entity with the same Entity Name and EIN as an existing one is currently allowed', async ({ page }) => {
-    // The wider waitForEntityRowCount budget (up to ~12s of rescanning per check, to
-    // absorb CI's slower list-indexing lag) can approach the default 30s test timeout.
-    test.setTimeout(60_000);
+    // waitForEntityRowCount is called twice here, each up to ~37s worst case on CI.
+    test.setTimeout(150_000);
 
     const contacts = new ContactsPage(page);
     const entityName = uniqueName('Duplicate-Entity');

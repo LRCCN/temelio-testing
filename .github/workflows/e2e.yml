@@ -11,7 +11,7 @@ jobs:
   e2e:
     name: Playwright E2E
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     env:
       BASE_URL: ${{ secrets.BASE_URL }}
       FOUNDATION_ID: ${{ secrets.FOUNDATION_ID }}

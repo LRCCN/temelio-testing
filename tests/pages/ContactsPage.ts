@@ -1,5 +1,11 @@
 import { Page, Locator, expect } from '@playwright/test';
 
+// CI runners have been observed needing meaningfully longer than a local machine for a
+// just-created row to show up in the Grantees grid — likely a combination of network
+// latency to the shared staging backend and its own indexing lag, neither of which
+// smarter DOM-querying can shortcut. Scale the retry budgets up accordingly on CI.
+const IS_CI = !!process.env.CI;
+
 export interface NewEntityFormInput {
   entityName?: string;
   ein?: string;
@@ -96,7 +102,13 @@ export class ContactsPage {
    * between — a single pass isn't always enough to outlast the app's own list
    * fetch/index lag for a just-created row, especially under CI or parallel workers.
    */
-  async scrollUntilCount(locator: Locator, minCount: number, passes = 5, stepsPerPass = 40, delayMs = 1200) {
+  async scrollUntilCount(
+    locator: Locator,
+    minCount: number,
+    passes = IS_CI ? 10 : 5,
+    stepsPerPass = 40,
+    delayMs = IS_CI ? 3000 : 1200
+  ) {
     for (let pass = 0; pass < passes; pass++) {
       await this.page.evaluate(() => {
         let el: HTMLElement | null = document.querySelector('[data-pw="table-rows"]');
@@ -135,7 +147,12 @@ export class ContactsPage {
    * second or third row can still land mid-scan. Rescanning from scratch (rather than
    * trusting Playwright's test-level retry) avoids creating yet more duplicate entities.
    */
-  async waitForEntityRowCount(name: string, expectedCount: number, retries = 8, delayMs = 1500): Promise<number> {
+  async waitForEntityRowCount(
+    name: string,
+    expectedCount: number,
+    retries = IS_CI ? 10 : 8,
+    delayMs = IS_CI ? 3000 : 1500
+  ): Promise<number> {
     let best = 0;
     for (let attempt = 0; attempt <= retries; attempt++) {
       best = Math.max(best, await this.countEntityRows(name));
