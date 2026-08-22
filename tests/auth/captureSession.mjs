@@ -7,6 +7,7 @@
 // click through Google's consent screen.
 import 'dotenv/config';
 import { chromium } from 'playwright';
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -29,8 +30,11 @@ if (!email || !password) {
 
 const baseURL = process.env.BASE_URL || 'https://app-dev.trytemelio.com/';
 const outFile = path.join(__dirname, '..', '..', 'playwright', '.auth', `${role}.json`);
+fs.mkdirSync(path.dirname(outFile), { recursive: true });
 
-const browser = await chromium.launch({ headless: false });
+// Headed locally so a human can watch it work; headless on CI runners (no display, and
+// GitHub Actions sets CI=true automatically).
+const browser = await chromium.launch({ headless: !!process.env.CI });
 const page = await browser.newPage();
 
 try {
