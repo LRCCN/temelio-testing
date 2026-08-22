@@ -1,0 +1,17 @@
+{
+  "name": "temelio-assessment-test",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "auth:admin": "node tests/auth/captureSession.mjs admin",
+    "auth:user": "node tests/auth/captureSession.mjs user"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "@types/node": "^26.2.0",
+    "dotenv": "^16.4.5"
+  }
+}
