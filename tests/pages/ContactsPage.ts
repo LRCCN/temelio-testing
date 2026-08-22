@@ -113,6 +113,25 @@ export class ContactsPage {
   }
 
   /**
+   * Repeatedly rescans (see countEntityRows) until at least `expectedCount` distinct rows
+   * are found, or gives up and returns the best count seen. A single scan can undercount
+   * on a slower runner (e.g. CI) if the grid's async fetch/index hasn't caught up with a
+   * just-created row yet — that's a slower version of the same lag `gotoGrantees` already
+   * waits out for the *first* row, but a full top-to-bottom scan takes long enough that a
+   * second or third row can still land mid-scan. Rescanning from scratch (rather than
+   * trusting Playwright's test-level retry) avoids creating yet more duplicate entities.
+   */
+  async waitForEntityRowCount(name: string, expectedCount: number, retries = 4, delayMs = 1000): Promise<number> {
+    let best = 0;
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      best = Math.max(best, await this.countEntityRows(name));
+      if (best >= expectedCount) return best;
+      if (attempt < retries) await this.page.waitForTimeout(delayMs);
+    }
+    return best;
+  }
+
+  /**
    * Counts distinct rows matching `name` by scrolling the virtualized grid from top to
    * bottom and accumulating unique row hrefs seen along the way. Needed because two
    * same-named rows (TC19) are never both mounted in the DOM at once — as you scroll past

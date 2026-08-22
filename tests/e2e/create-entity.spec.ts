@@ -90,7 +90,7 @@ test.describe('Contacts > Create Entity', () => {
     await contacts.expectToastMessage(/contact created/i);
 
     await contacts.gotoGrantees();
-    expect(await contacts.countEntityRows(entityName)).toBe(1);
+    expect(await contacts.waitForEntityRowCount(entityName, 1)).toBe(1);
 
     await contacts.openNewEntityModal();
     await contacts.fillNewEntityForm({ entityName, ein });
@@ -98,6 +98,6 @@ test.describe('Contacts > Create Entity', () => {
     await contacts.expectToastMessage(/contact created/i);
 
     await contacts.gotoGrantees();
-    expect(await contacts.countEntityRows(entityName)).toBe(2);
+    expect(await contacts.waitForEntityRowCount(entityName, 2)).toBe(2);
   });
 });
