@@ -92,23 +92,37 @@ export class ContactsPage {
    * rows near the current scroll position), and the account this suite runs against
    * accumulates records across runs, so a freshly created entity isn't guaranteed to be
    * within the initially-rendered window. Scrolls the grid incrementally until `locator`
-   * has at least `minCount` matches or the container is fully scrolled.
+   * has at least `minCount` matches, retrying full top-to-bottom passes with a delay in
+   * between — a single pass isn't always enough to outlast the app's own list
+   * fetch/index lag for a just-created row, especially under CI or parallel workers.
    */
-  async scrollUntilCount(locator: Locator, minCount: number, maxSteps = 40) {
-    for (let i = 0; i < maxSteps; i++) {
-      if ((await locator.count()) >= minCount) return;
-      const scrolled = await this.page.evaluate(() => {
+  async scrollUntilCount(locator: Locator, minCount: number, passes = 5, stepsPerPass = 40, delayMs = 1200) {
+    for (let pass = 0; pass < passes; pass++) {
+      await this.page.evaluate(() => {
         let el: HTMLElement | null = document.querySelector('[data-pw="table-rows"]');
-        while (el && el.scrollHeight <= el.clientHeight + 1) {
-          el = el.parentElement;
-        }
-        if (!el) return false;
-        if (el.scrollTop + el.clientHeight >= el.scrollHeight - 1) return false;
-        el.scrollTop = Math.min(el.scrollTop + el.clientHeight, el.scrollHeight);
-        return true;
+        while (el && el.scrollHeight <= el.clientHeight + 1) el = el.parentElement;
+        if (el) el.scrollTop = 0;
       });
-      if (!scrolled) return;
-      await this.page.waitForTimeout(120);
+      await this.page.waitForTimeout(150);
+
+      for (let i = 0; i < stepsPerPass; i++) {
+        if ((await locator.count()) >= minCount) return;
+        const scrolled = await this.page.evaluate(() => {
+          let el: HTMLElement | null = document.querySelector('[data-pw="table-rows"]');
+          while (el && el.scrollHeight <= el.clientHeight + 1) {
+            el = el.parentElement;
+          }
+          if (!el) return false;
+          if (el.scrollTop + el.clientHeight >= el.scrollHeight - 1) return false;
+          el.scrollTop = Math.min(el.scrollTop + el.clientHeight, el.scrollHeight);
+          return true;
+        });
+        if (!scrolled) break;
+        await this.page.waitForTimeout(120);
+      }
+
+      if ((await locator.count()) >= minCount) return;
+      if (pass < passes - 1) await this.page.waitForTimeout(delayMs);
     }
   }
 
@@ -121,7 +135,7 @@ export class ContactsPage {
    * second or third row can still land mid-scan. Rescanning from scratch (rather than
    * trusting Playwright's test-level retry) avoids creating yet more duplicate entities.
    */
-  async waitForEntityRowCount(name: string, expectedCount: number, retries = 4, delayMs = 1000): Promise<number> {
+  async waitForEntityRowCount(name: string, expectedCount: number, retries = 8, delayMs = 1500): Promise<number> {
     let best = 0;
     for (let attempt = 0; attempt <= retries; attempt++) {
       best = Math.max(best, await this.countEntityRows(name));
